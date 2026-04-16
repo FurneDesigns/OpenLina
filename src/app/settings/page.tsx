@@ -9,6 +9,53 @@ import {
   Plus, Trash2, CheckCircle, XCircle, Loader2, RefreshCw,
   Terminal, Key, ChevronDown, ChevronUp, Eye, EyeOff, GripVertical,
 } from 'lucide-react'
+import {
+  DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent
+} from '@dnd-kit/core'
+import {
+  arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+
+// ─── Child Components ────────────────────────────────────────────────────────
+
+function SortableItem({ c, index, onToggle, onDelete }: { c: LLMConfig, index: number, onToggle: (id: string, state: boolean) => void, onDelete: (id: string) => void }) {
+  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: c.id })
+  const style = { transform: CSS.Transform.toString(transform), transition }
+  
+  return (
+    <div ref={setNodeRef} style={style} className="flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-2.5 z-10 relative">
+      <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing hover:bg-muted p-1 rounded shrink-0">
+        <GripVertical className="h-4 w-4 text-muted-foreground/40" />
+      </div>
+      <div className="flex h-6 w-6 items-center justify-center rounded-md bg-muted text-xs font-bold shrink-0">
+        {index + 1}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium truncate">{c.label}</span>
+          <Badge variant="secondary" className="text-[10px] px-1.5 py-0 shrink-0">
+            {c.provider_type === 'cli' ? `CLI · ${c.cli_command}` : c.platform_id}
+          </Badge>
+        </div>
+        <p className="text-xs text-muted-foreground">{c.model_id}</p>
+      </div>
+      <button
+        onClick={() => onToggle(c.id, !c.enabled)}
+        className={`text-xs px-2 py-0.5 rounded-full border transition-colors shrink-0 ${
+          c.enabled
+            ? 'border-green-500/30 text-green-400 bg-green-500/10'
+            : 'border-border text-muted-foreground'
+        }`}
+      >
+        {c.enabled ? 'Enabled' : 'Disabled'}
+      </button>
+      <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground hover:text-red-400 shrink-0" onClick={() => onDelete(c.id)}>
+        <Trash2 className="h-3.5 w-3.5" />
+      </Button>
+    </div>
+  )
+}
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -56,6 +103,26 @@ const CLI_TOOLS = [
     envDesc: 'Configure keys with `llm keys set openai` etc.',
   },
   {
+    id: 'opencode', label: 'OpenCode', icon: '💻',
+    desc: 'Anomaly\'s open-source coding agent. Highly customizable.',
+    installUrl: 'https://opencode.ai',
+    installCmd: 'npm install -g opencode-ai',
+    defaultModel: 'claude-3-5-sonnet-20241022',
+    models: [],
+    envKey: 'ANTHROPIC_API_KEY',
+    envDesc: 'API key for the model you want to use with OpenCode.',
+  },
+  {
+    id: 'openclaw', label: 'OpenClaw', icon: '🦞',
+    desc: 'Anomaly\'s personal AI with 100+ skills. Built for agentic tasks.',
+    installUrl: 'https://openclaw.ai',
+    installCmd: 'npm install -g openclaw-ai',
+    defaultModel: 'claude-3-5-sonnet-20241022',
+    models: [],
+    envKey: 'ANTHROPIC_API_KEY',
+    envDesc: 'API key for the model you want to use with OpenClaw.',
+  },
+  {
     id: 'aider', label: 'Aider', icon: '🤝',
     desc: 'AI pair programming in your terminal. Works with OpenAI, Anthropic, and local models.',
     installUrl: 'https://aider.chat',
@@ -64,6 +131,16 @@ const CLI_TOOLS = [
     models: [],
     envKey: 'ANTHROPIC_API_KEY',
     envDesc: 'API key for the model you want to use with Aider.',
+  },
+  {
+    id: 'ollama', label: 'Ollama (local)', icon: '🦙',
+    desc: 'Run open-source models locally — completely free.',
+    installUrl: 'https://ollama.com',
+    installCmd: 'curl -fsSL https://ollama.com/install.sh | sh',
+    defaultModel: 'llama3.2',
+    models: [],
+    envKey: '',
+    envDesc: 'Ollama needs to be running in the background.',
   },
 ]
 
@@ -86,13 +163,6 @@ const API_PROVIDERS = [
     desc: 'Gemini API — generous free tier.',
     apiKeyPlaceholder: 'AIza...',
     models: ['gemini-2.5-pro', 'gemini-2.0-flash'],
-  },
-  {
-    id: 'ollama', label: 'Ollama (local)', icon: '🦙',
-    desc: 'Run open-source models locally — completely free.',
-    endpointPlaceholder: 'http://localhost:11434',
-    models: [],
-    isLocal: true,
   },
 ]
 
@@ -166,6 +236,29 @@ export default function SettingsPage() {
     }
   }
 
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  )
+
+  async function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+
+    const sorted = [...configs].sort((a,b) => a.priority - b.priority)
+    const oldIndex = sorted.findIndex(c => c.id === active.id)
+    const newIndex = sorted.findIndex(c => c.id === over.id)
+    const reordered = arrayMove(sorted, oldIndex, newIndex)
+    
+    const newlyOrdered = reordered.map((c, i) => ({ ...c, priority: i + 1 }))
+    setConfigs(newlyOrdered)
+    
+    await fetch('/api/llm', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newlyOrdered.map(c => ({ id: c.id, priority: c.priority })))
+    })
+  }
 
   const loadStatus = useCallback(async () => {
     setCliLoading(true)
@@ -507,12 +600,26 @@ export default function SettingsPage() {
                           </div>
                         )}
 
-                        <Button size="sm" onClick={() => saveCLI(tool.id)}
-                          disabled={saving === tool.id || (!status?.installed && !config)}
-                          className="gap-1.5">
-                          {saving === tool.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-                          {isConfigured ? 'Update' : 'Add to queue'}
-                        </Button>
+                        <div className="flex items-center gap-4">
+                          <Button size="sm" onClick={() => saveCLI(tool.id)}
+                            disabled={saving === tool.id || (!status?.installed && !config)}
+                            className="gap-1.5">
+                            {saving === tool.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+                            {isConfigured ? 'Update configuration' : 'Add to queue'}
+                          </Button>
+                          
+                          {isConfigured && config && (
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => toggleConfig(config.id, !config.enabled)}
+                                className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${config.enabled ? 'bg-green-500' : 'bg-input'}`}
+                              >
+                                <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${config.enabled ? 'translate-x-4' : 'translate-x-0'}`} />
+                              </button>
+                              <span className="text-xs text-muted-foreground">{config.enabled ? 'Active' : 'Disabled'}</span>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     )}
                   </div>
@@ -647,12 +754,26 @@ export default function SettingsPage() {
                           )}
                         </div>
 
-                        <Button size="sm" onClick={() => saveAPI(provider.id)}
-                          disabled={saving === provider.id}
-                          className="gap-1.5">
-                          {saving === provider.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-                          {isConfigured ? 'Update' : 'Save & activate'}
-                        </Button>
+                        <div className="flex items-center gap-4">
+                          <Button size="sm" onClick={() => saveAPI(provider.id)}
+                            disabled={saving === provider.id}
+                            className="gap-1.5">
+                            {saving === provider.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+                            {isConfigured ? 'Update configuration' : 'Save & activate'}
+                          </Button>
+                          
+                          {isConfigured && config && (
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => toggleConfig(config.id, !config.enabled)}
+                                className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${config.enabled ? 'bg-green-500' : 'bg-input'}`}
+                              >
+                                <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${config.enabled ? 'translate-x-4' : 'translate-x-0'}`} />
+                              </button>
+                              <span className="text-xs text-muted-foreground">{config.enabled ? 'Active' : 'Disabled'}</span>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     )}
                   </div>
@@ -677,42 +798,18 @@ export default function SettingsPage() {
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {configs
-                    .sort((a, b) => a.priority - b.priority)
-                    .map((c, i) => (
-                      <div key={c.id} className="flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-2.5">
-                        <GripVertical className="h-4 w-4 text-muted-foreground/40 shrink-0" />
-                        <div className="flex h-6 w-6 items-center justify-center rounded-md bg-muted text-xs font-bold shrink-0">
-                          {i + 1}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium truncate">{c.label}</span>
-                            <Badge variant="secondary" className="text-[10px] px-1.5 py-0 shrink-0">
-                              {c.provider_type === 'cli' ? `CLI · ${c.cli_command}` : c.platform_id}
-                            </Badge>
-                          </div>
-                          <p className="text-xs text-muted-foreground">{c.model_id}</p>
-                        </div>
-                        <button
-                          onClick={() => toggleConfig(c.id, !c.enabled)}
-                          className={`text-xs px-2 py-0.5 rounded-full border transition-colors shrink-0 ${
-                            c.enabled
-                              ? 'border-green-500/30 text-green-400 bg-green-500/10'
-                              : 'border-border text-muted-foreground'
-                          }`}
-                        >
-                          {c.enabled ? 'Enabled' : 'Disabled'}
-                        </button>
-                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground hover:text-red-400 shrink-0"
-                          onClick={async () => {
-                            await fetch(`/api/llm/${c.id}`, { method: 'DELETE' })
+                  <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                    <SortableContext items={configs.map(c => c.id)} strategy={verticalListSortingStrategy}>
+                      {configs
+                        .sort((a, b) => a.priority - b.priority)
+                        .map((c, i) => (
+                          <SortableItem key={c.id} c={c} index={i} onToggle={toggleConfig} onDelete={async (id: string) => {
+                            await fetch(`/api/llm/${id}`, { method: 'DELETE' })
                             await loadStatus()
-                          }}>
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    ))}
+                          }} />
+                        ))}
+                    </SortableContext>
+                  </DndContext>
                 </div>
               )}
             </div>

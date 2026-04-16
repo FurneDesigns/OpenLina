@@ -25,6 +25,7 @@ function rowToProject(r: Record<string, unknown>) {
     keyFeatures:      r.key_features      ? JSON.parse(r.key_features as string)      : [],
     techStack:        r.tech_stack        ? JSON.parse(r.tech_stack as string)        : [],
     deploymentTarget: r.deployment_target,
+    targetLlmConfigId: r.target_llm_config_id,
     i18nStrategy:     r.i18n_strategy,
     i18nLocales:      r.i18n_locales      ? JSON.parse(r.i18n_locales as string)      : [],
     defaultLocale:    r.default_locale,
@@ -53,6 +54,7 @@ export async function POST(req: NextRequest) {
     i18nStrategy?: string
     i18nLocales?: string[]
     defaultLocale?: string
+    targetLlmConfigId?: string
   }
 
   const db = getDb()
@@ -74,8 +76,9 @@ export async function POST(req: NextRequest) {
       id, name, slug, description, project_type, framework,
       root_path, workspace_path, assets_dir,
       target_audience, brand_colors, key_features, tech_stack,
-      deployment_target, i18n_strategy, i18n_locales, default_locale
-    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+      deployment_target, i18n_strategy, i18n_locales, default_locale,
+      target_llm_config_id
+    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
   `).run(
     id, body.name, slug, body.description ?? null,
     body.projectType, body.framework,
@@ -88,6 +91,7 @@ export async function POST(req: NextRequest) {
     body.i18nStrategy ?? 'none',
     body.i18nLocales  ? JSON.stringify(body.i18nLocales)  : null,
     body.defaultLocale ?? null,
+    body.targetLlmConfigId ?? null,
   )
 
   db.prepare("INSERT OR REPLACE INTO settings (key,value) VALUES ('active_project_id',?)").run(id)

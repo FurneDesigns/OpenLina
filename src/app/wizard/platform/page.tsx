@@ -28,10 +28,34 @@ const CLI_TOOLS = [
     envKeyLabel: 'OpenAI API Key',
   },
   {
+    id: 'opencode', label: 'OpenCode', icon: '💻',
+    desc: 'Anomaly\'s open-source coding agent. Highly customizable.',
+    installCmd: 'npm install -g opencode-ai',
+    defaultModel: 'claude-3-5-sonnet-20241022',
+    envKey: 'ANTHROPIC_API_KEY',
+    envKeyLabel: 'API Key (optional)',
+  },
+  {
+    id: 'openclaw', label: 'OpenClaw', icon: '🦞',
+    desc: 'Anomaly\'s personal AI with 100+ skills. Built for agentic tasks.',
+    installCmd: 'npm install -g openclaw-ai',
+    defaultModel: 'claude-3-5-sonnet-20241022',
+    envKey: 'ANTHROPIC_API_KEY',
+    envKeyLabel: 'API Key (optional)',
+  },
+  {
     id: 'llm', label: 'LLM CLI', icon: '🧠',
     desc: 'Multi-provider CLI by Simon Willison. Supports many models.',
     installCmd: 'pip install llm',
     defaultModel: 'gpt-4o',
+    envKey: '',
+    envKeyLabel: '',
+  },
+  {
+    id: 'ollama', label: 'Ollama (local)', icon: '🦙',
+    desc: 'Run open-source models locally — completely free.',
+    installCmd: 'curl -fsSL https://ollama.com/install.sh | sh',
+    defaultModel: 'llama3.2',
     envKey: '',
     envKeyLabel: '',
   },
@@ -55,13 +79,6 @@ const API_PROVIDERS = [
     placeholder: 'AIza...', defaultModel: 'gemini-2.0-flash',
     models: ['gemini-2.5-pro', 'gemini-2.0-flash'],
     note: 'Generous free tier available',
-  },
-  {
-    id: 'ollama', label: 'Ollama (local)', icon: '🦙',
-    placeholder: 'http://localhost:11434', defaultModel: 'llama3.2',
-    models: [] as string[],
-    note: 'Free — runs locally on your machine',
-    isEndpoint: true,
   },
 ]
 

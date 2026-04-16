@@ -20,25 +20,25 @@ function buildPrompt(messages: LLMMessage[]): string {
 export interface CLIAdapterOptions {
   llmConfigId: string
   platformId: string
-  /** Executable name, e.g. "claude", "codex", "llm" */
   command: string
-  /** Model flag value, e.g. "claude-sonnet-4-6" */
   modelId: string
-  /** Additional static args before the prompt, e.g. ["-p"] for claude or ["-q"] for codex */
   staticArgs?: string[]
-  /** Optional model flag, e.g. "--model" — will be appended as ["--model", modelId] */
   modelFlag?: string
-  /** Env vars to inject into the subprocess (e.g. ANTHROPIC_API_KEY) */
   envVars?: Record<string, string>
 }
 
-const TOOL_DEFAULTS: Record<string, Omit<CLIAdapterOptions, 'llmConfigId' | 'platformId' | 'command' | 'modelId' | 'envVars'>> = {
-  claude:  { staticArgs: ['-p'],        modelFlag: '--model' },
-  codex:   { staticArgs: [],            modelFlag: '--model' },
-  llm:     { staticArgs: [],            modelFlag: '-m' },
-  aider:   { staticArgs: ['--message'], modelFlag: '--model' },
-  sgpt:    { staticArgs: [],            modelFlag: '--model' },
-  custom:  { staticArgs: [] },
+type ToolDefault = Omit<CLIAdapterOptions, 'llmConfigId' | 'platformId' | 'command' | 'modelId'>
+
+const TOOL_DEFAULTS: Record<string, ToolDefault> = {
+  claude:  { staticArgs: ['-p'],        modelFlag: '--model', envVars: {} },
+  codex:   { staticArgs: [],            modelFlag: '--model', envVars: {} },
+  llm:     { staticArgs: [],            modelFlag: '-m',      envVars: {} },
+  aider:   { staticArgs: ['--message'], modelFlag: '--model', envVars: {} },
+  opencode:{ staticArgs: ['run'],       modelFlag: '--model', envVars: { OPENCODE_YOLO: 'true' } },
+  openclaw:{ staticArgs: ['run'],       modelFlag: '--model', envVars: { OPENCODE_YOLO: 'true' } },
+  sgpt:    { staticArgs: [],            modelFlag: '--model', envVars: {} },
+  ollama:  { staticArgs: ['run'],       modelFlag: undefined, envVars: {} },
+  custom:  { staticArgs: [],            envVars: {} },
 }
 
 export class CLIAdapter implements LLMAdapter {
@@ -56,11 +56,11 @@ export class CLIAdapter implements LLMAdapter {
     this.command = opts.command
     // Map unsupported model that triggers blocking interactive CLI warnings
     this.modelId = opts.modelId === 'o4-mini' && opts.command === 'codex' ? 'gpt-4o-mini' : opts.modelId
-    this.envVars = opts.envVars ?? {}
-
+    
     const defaults = TOOL_DEFAULTS[opts.command] ?? TOOL_DEFAULTS.custom
     this.staticArgs = opts.staticArgs ?? defaults.staticArgs ?? []
     this.modelFlag  = opts.modelFlag  ?? defaults.modelFlag
+    this.envVars    = { ...(defaults.envVars || {}), ...(opts.envVars || {}) }
   }
 
   getContextWindow(): number {
@@ -70,11 +70,13 @@ export class CLIAdapter implements LLMAdapter {
   getCliOptions(): CliAdapterOptions {
     return {
       command: this.command,
-      buildArgs: (prompt: string) => [
-        ...this.staticArgs,
-        ...(this.modelFlag && this.modelId ? [this.modelFlag, this.modelId] : []),
-        prompt,
-      ],
+      buildArgs: (prompt: string) => {
+        const out = [...this.staticArgs]
+        if (this.modelFlag && this.modelId) out.push(this.modelFlag, this.modelId)
+        else if (this.command === 'ollama' && this.modelId) out.push(this.modelId)
+        out.push(prompt)
+        return out
+      },
       env: this.envVars,
     }
   }
@@ -84,11 +86,10 @@ export class CLIAdapter implements LLMAdapter {
 
     const prompt = buildPrompt(request.messages)
 
-    const args = [
-      ...this.staticArgs,
-      ...(this.modelFlag && this.modelId ? [this.modelFlag, this.modelId] : []),
-      prompt,
-    ]
+    const args = [...this.staticArgs]
+    if (this.modelFlag && this.modelId) args.push(this.modelFlag, this.modelId)
+    else if (this.command === 'ollama' && this.modelId) args.push(this.modelId)
+    args.push(prompt)
 
     const start = Date.now()
 

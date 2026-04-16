@@ -16,8 +16,12 @@ interface Project {
   projectType: string; framework: string; targetAudience?: string
   brandColors?: { primary: string; secondary: string; accent: string }
   keyFeatures?: string[]; techStack?: string[]
-  deploymentTarget?: string; workspacePath?: string
+  deploymentTarget?: string; workspacePath?: string; targetLlmConfigId?: string
   createdAt: string; updatedAt: string
+}
+
+interface LLMConfig {
+  id: string; label: string; model_id: string; platform_label: string; enabled: number; provider_type: string
 }
 
 interface Agent {
@@ -63,8 +67,10 @@ export default function ProjectDetailPage() {
   const [project, setProject] = useState<Project | null>(null)
   const [agents, setAgents] = useState<Agent[]>([])
   const [runs, setRuns] = useState<Run[]>([])
+  const [configs, setConfigs] = useState<LLMConfig[]>([])
   const [starting, setStarting] = useState(false)
   const [maxIter, setMaxIter] = useState(3)
+  const [targetModel, setTargetModel] = useState<string>('')
 
   useEffect(() => {
     fetch(`/api/projects/${slug}`)
@@ -74,13 +80,32 @@ export default function ProjectDetailPage() {
         return Promise.all([
           fetch(`/api/projects/${data.id}/agents`).then((r) => r.json()),
           fetch(`/api/projects/${data.id}/runs`).then((r) => r.json()),
+          fetch('/api/llm').then((r) => r.json()),
         ])
       })
-      .then(([agentData, runData]) => {
+      .then(([agentData, runData, llmData]) => {
         setAgents(agentData as Agent[])
         setRuns(runData as Run[])
+        const activeConfigs = (llmData as LLMConfig[]).filter(c => c.enabled === 1)
+        setConfigs(activeConfigs)
       })
   }, [slug])
+
+  useEffect(() => {
+    if (project) {
+      setTargetModel(project.targetLlmConfigId || '')
+    }
+  }, [project])
+
+  const updateTargetModel = async (id: string) => {
+    if (!project) return
+    setTargetModel(id)
+    await fetch(`/api/projects/${project.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ targetLlmConfigId: id || null })
+    })
+  }
 
   async function deleteProject() {
     if (!project) return
@@ -157,6 +182,22 @@ export default function ProjectDetailPage() {
                   ))}
                 </select>
               </div>
+              <div className="flex items-center gap-2 border border-border rounded-md px-2 bg-background/50">
+                <Cpu className="h-3.5 w-3.5 text-muted-foreground" />
+                <select
+                  value={targetModel}
+                  onChange={(e) => updateTargetModel(e.target.value)}
+                  className="h-8 bg-transparent border-none text-xs focus:ring-0 pr-6"
+                >
+                  <option value="">Auto (Priority Queue)</option>
+                  {configs.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.label} ({c.model_id})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <Button
                 onClick={startRun}
                 disabled={starting || agents.length === 0}

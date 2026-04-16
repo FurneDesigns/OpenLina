@@ -14,7 +14,7 @@ export class OllamaAdapter implements LLMAdapter {
     modelId: string
     temperature: number
   }) {
-    this.endpointUrl = opts.endpointUrl.replace(/\/$/, '')
+    this.endpointUrl = opts.endpointUrl.replace(/\/$/, '').replace('localhost', '127.0.0.1')
     this.modelId = opts.modelId
     this.llmConfigId = opts.llmConfigId
     this.temperature = opts.temperature

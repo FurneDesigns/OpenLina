@@ -109,6 +109,42 @@ async function runCLIModels(command: string): Promise<string[] | null> {
     })
   }
 
+  if (command === 'ollama') {
+    strategies.push({
+      cmd: 'ollama list 2>/dev/null',
+      parse: (out) =>
+        out
+          .split('\n')
+          .slice(1) // skip header
+          .map((l) => l.split(/\s+/)[0])
+          .filter(Boolean),
+    })
+  }
+
+  if (command === 'opencode') {
+    strategies.push({
+      cmd: 'opencode models 2>/dev/null',
+      parse: (out) =>
+        out
+          .split('\n')
+          .map(l => l.trim())
+          .filter(l => l.includes('/') && !l.includes(' ') && !l.startsWith('Use '))
+          .map(l => l.split(/\s+/)[0])
+    })
+  }
+
+  if (command === 'openclaw') {
+    strategies.push({
+      cmd: 'openclaw models 2>/dev/null',
+      parse: (out) =>
+        out
+          .split('\n')
+          .map(l => l.trim())
+          .filter(l => l.includes('/') && !l.includes(' ') && !l.startsWith('Use '))
+          .map(l => l.split(/\s+/)[0])
+    })
+  }
+
   for (const strategy of strategies) {
     try {
       const { stdout } = await execAsync(strategy.cmd, { timeout: 6000, shell: '/bin/bash' })
@@ -124,6 +160,23 @@ async function runCLIModels(command: string): Promise<string[] | null> {
 
 /** Curated fallback lists for subscription CLIs that may not expose --list-models */
 const CLI_FALLBACKS: Record<string, string[]> = {
+  openclaw: [
+    'opencode/big-pickle',
+    'opencode/minimax-m2.5-free',
+    'opencode/nemotron-3-super-free',
+    'opencode/mimo-v2-pro-free',
+    'opencode/llama-3.1-70b-instruct',
+    'claude-3-5-sonnet-20241022',
+  ],
+  opencode: [
+    'opencode/big-pickle',
+    'opencode/minimax-m2.5-free',
+    'opencode/nemotron-3-super-free',
+    'opencode/mimo-v2-pro-free',
+    'opencode/llama-3.1-70b-instruct',
+    'claude-3-5-sonnet-20241022',
+    'gpt-4o',
+  ],
   codex: [
     'gpt-5.4',
     'gpt-5.4-mini',
@@ -176,13 +229,6 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ models: await fetchGeminiModels(key) })
       }
 
-      if (id === 'ollama') {
-        const url = (platform?.endpoint_url || 'http://localhost:11434').replace(/\/$/, '')
-        const res = await fetch(`${url}/api/tags`)
-        if (!res.ok) throw new Error('Ollama API request failed — is Ollama running?')
-        const data = (await res.json()) as { models: { name: string }[] }
-        return NextResponse.json({ models: (data.models || []).map((m) => m.name).sort() })
-      }
     }
 
     // ── CLI tools ─────────────────────────────────────────────────────────────
@@ -193,18 +239,36 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ models: fromCLI })
       }
 
-      // 2. If CLI doesn't expose models, try with stored API key (aider, llm with API keys)
+      // 2. If CLI doesn't expose models, try with stored API key (aider, opencode, llm with API keys)
       const envVars = getCLIEnvVars(id)
-      if (id === 'aider') {
+      if (id === 'aider' || id === 'opencode') {
         const anthropicKey = envVars['ANTHROPIC_API_KEY'] || process.env.ANTHROPIC_API_KEY
         const openaiKey    = envVars['OPENAI_API_KEY']    || process.env.OPENAI_API_KEY
         const models: string[] = []
-        if (anthropicKey) models.push(...await fetchAnthropicModels(anthropicKey))
-        if (openaiKey)    models.push(...await fetchOpenAIModels(openaiKey))
+        if (anthropicKey) {
+          try { models.push(...await fetchAnthropicModels(anthropicKey)) } catch {}
+        }
+        if (openaiKey) {
+          try { models.push(...await fetchOpenAIModels(openaiKey)) } catch {}
+        }
         if (models.length > 0) return NextResponse.json({ models: [...new Set(models)].sort() })
       }
 
-      // 3. Return curated fallback list if we know the CLI
+      // 3. Special fallback for Ollama via HTTP if CLI fails
+      if (id === 'ollama') {
+        try {
+          const url = 'http://127.0.0.1:11434'
+          const res = await fetch(`${url}/api/tags`)
+          if (res.ok) {
+            const data = (await res.json()) as { models: { name: string }[] }
+            if (data.models && data.models.length > 0) {
+              return NextResponse.json({ models: data.models.map((m) => m.name).sort() })
+            }
+          }
+        } catch { /* ignore fallback error */ }
+      }
+
+      // 4. Return curated fallback list if we know the CLI
       const fallback = CLI_FALLBACKS[id]
       if (fallback) return NextResponse.json({ models: fallback, fallback: true })
 

@@ -185,7 +185,7 @@ export class PipelineRunner {
         `).run(stepId, runId, agentRow.id as string, agentName, agentRole, iteration)
 
         // Check if we can run this agent via PTY (CLI adapter available)
-        const adapters = getOrderedAdapters()
+        const adapters = getOrderedAdapters(project.target_llm_config_id as string | undefined)
         const cliOpts = adapters[0]?.getCliOptions?.()
 
         const sessionId = cliOpts ? uuid() : undefined
@@ -252,8 +252,10 @@ export class PipelineRunner {
             // ── API / failover path ───────────────────────────────────────────
             let streamedOutput = ''
             const response = await invokeWithFailover(messages, {
+              requestId: stepId,
               agentId: agentRow.id as string,
               signal,
+              targetLlmConfigId: project.target_llm_config_id as string | undefined,
               onChunk: (delta) => {
                 streamedOutput += delta
                 this.emit('agent_chunk', runId, stepId, delta)

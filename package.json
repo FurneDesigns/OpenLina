@@ -2,6 +2,10 @@
   "name": "openlina",
   "version": "0.1.0",
   "description": "Local GUI for managing AI coding assistants — Codex, Claude Code, and more",
+  "author": {
+    "name": "FurneDesigns",
+    "url": "https://furnedesigns.com"
+  },
   "bin": {
     "openlina": "./bin/openlina.js"
   },

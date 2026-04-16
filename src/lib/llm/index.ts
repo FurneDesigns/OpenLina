@@ -114,8 +114,11 @@ function autoRegisterCLIs(): void {
   const CLI_DEFAULTS: Array<{ command: string; label: string; model: string }> = [
     { command: 'claude', label: 'Claude Code',  model: 'claude-sonnet-4-6' },
     { command: 'codex',  label: 'Codex CLI',    model: 'gpt-5.1-codex-mini' },
+    { command: 'opencode', label: 'OpenCode',   model: 'claude-3-5-sonnet-20241022' },
+    { command: 'openclaw', label: 'OpenClaw',   model: 'claude-3-5-sonnet-20241022' },
     { command: 'llm',    label: 'LLM CLI',      model: 'gpt-4o' },
     { command: 'aider',  label: 'Aider',        model: 'claude-sonnet-4-6' },
+    { command: 'ollama', label: 'Ollama',       model: 'llama3.2' },
   ]
 
   for (const cli of CLI_DEFAULTS) {
@@ -148,7 +151,7 @@ function autoRegisterCLIs(): void {
   }
 }
 
-export function getOrderedAdapters(): LLMAdapter[] {
+export function getOrderedAdapters(targetId?: string): LLMAdapter[] {
   const db = getDb()
   let configs = db
     .prepare('SELECT id FROM llm_configs WHERE enabled = 1 ORDER BY priority ASC')
@@ -160,6 +163,15 @@ export function getOrderedAdapters(): LLMAdapter[] {
     configs = db
       .prepare('SELECT id FROM llm_configs WHERE enabled = 1 ORDER BY priority ASC')
       .all() as { id: string }[]
+  }
+
+  // If a targetId is provided, move it to the front of the list
+  if (targetId) {
+    const targetIdx = configs.findIndex(c => c.id === targetId)
+    if (targetIdx !== -1) {
+      const [target] = configs.splice(targetIdx, 1)
+      configs.unshift(target)
+    }
   }
 
   return configs.map((c) => buildAdapter(c.id)).filter(Boolean) as LLMAdapter[]

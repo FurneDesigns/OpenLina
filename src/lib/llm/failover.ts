@@ -16,11 +16,12 @@ export async function invokeWithFailover(
     onFailover?: FailoverEventCallback
     signal?: AbortSignal
     onChunk?: (delta: string) => void
+    targetLlmConfigId?: string
   } = {},
 ): Promise<LLMResponse> {
   const requestId = options.requestId ?? uuid()
   const db = getDb()
-  const adapters = getOrderedAdapters()
+  const adapters = getOrderedAdapters(options.targetLlmConfigId)
 
   if (adapters.length === 0) {
     throw new Error('No LLM adapters configured. Please add at least one platform in Settings.')

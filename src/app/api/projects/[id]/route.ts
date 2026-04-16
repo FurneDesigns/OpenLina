@@ -10,7 +10,9 @@ function rowToProject(r: Record<string, unknown>) {
     brandColors:      r.brand_colors   ? JSON.parse(r.brand_colors as string)   : null,
     keyFeatures:      r.key_features   ? JSON.parse(r.key_features as string)   : [],
     techStack:        r.tech_stack     ? JSON.parse(r.tech_stack as string)     : [],
-    deploymentTarget: r.deployment_target, i18nStrategy: r.i18n_strategy,
+    deploymentTarget: r.deployment_target,
+    targetLlmConfigId: r.target_llm_config_id,
+    i18nStrategy:     r.i18n_strategy,
     i18nLocales:      r.i18n_locales   ? JSON.parse(r.i18n_locales as string)   : [],
     createdAt: r.created_at, updatedAt: r.updated_at,
   }
@@ -34,7 +36,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   const map: Record<string, string> = {
     name: 'name', description: 'description', targetAudience: 'target_audience',
     brandColors: 'brand_colors', keyFeatures: 'key_features', techStack: 'tech_stack',
-    deploymentTarget: 'deployment_target', i18nStrategy: 'i18n_strategy',
+    deploymentTarget: 'deployment_target', targetLlmConfigId: 'target_llm_config_id', i18nStrategy: 'i18n_strategy',
   }
 
   const sets: string[] = []

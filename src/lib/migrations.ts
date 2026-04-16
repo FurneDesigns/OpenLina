@@ -237,6 +237,16 @@ const migrations: Migration[] = [
       db.exec(`UPDATE llm_configs SET provider_type = 'cli' WHERE cli_command IS NOT NULL AND cli_command != '' AND provider_type = 'api'`)
     },
   },
+  // ── Migration 19: project specific model pinning ──────────────────────────
+  {
+    id: 19,
+    run: (db) => {
+      const cols = (db.prepare("PRAGMA table_info(projects)").all() as {name:string}[]).map(c=>c.name)
+      if (!cols.includes('target_llm_config_id')) {
+        db.exec("ALTER TABLE projects ADD COLUMN target_llm_config_id TEXT REFERENCES llm_configs(id) ON DELETE SET NULL")
+      }
+    },
+  },
 ]
 
 export function runMigrations(db: DB): void {

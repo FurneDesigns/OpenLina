@@ -17,13 +17,13 @@ export function Sidebar() {
   const pathname = usePathname()
 
   return (
-    <aside className="flex h-screen w-16 flex-col items-center border-r border-border bg-card py-4">
+    <aside className="flex h-screen w-16 flex-col items-center border-r border-border bg-card pb-4">
       {/* Logo */}
       {/*<div className="mb-6 flex h-9 w-9 items-center justify-center rounded-lg bg-primary">*/}
       {/*  <Zap className="h-5 w-5 text-white" />*/}
       {/*</div>*/}
 
-       <img src="/logo-openlina.png" alt="Logo" className="p-2" />
+       <img src="/logo-openlina.png" alt="Logo" className="p-2 mb-4" />
 
       <nav className="flex flex-1 flex-col items-center gap-1">
         {links.map(({ href, icon: Icon, label }) => {

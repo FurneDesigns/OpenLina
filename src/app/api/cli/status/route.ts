@@ -6,7 +6,10 @@ const TOOLS = [
   { id: 'codex',  label: 'Codex CLI',       checkCmd: 'codex --version',   versionRegex: /[\d.]+/ },
   { id: 'llm',    label: 'LLM CLI',         checkCmd: 'llm --version',     versionRegex: /[\d.]+/ },
   { id: 'aider',  label: 'Aider',           checkCmd: 'aider --version',   versionRegex: /[\d.]+/ },
+  { id: 'opencode', label: 'OpenCode',      checkCmd: 'opencode --version',versionRegex: /[\d.]+/ },
   { id: 'sgpt',   label: 'Shell-GPT',       checkCmd: 'sgpt --version',    versionRegex: /[\d.]+/ },
+  { id: 'ollama', label: 'Ollama',          checkCmd: 'ollama --version',  versionRegex: /[\d.]+/ },
+  { id: 'openclaw', label: 'OpenClaw',      checkCmd: 'openclaw --version',versionRegex: /[\d.]+/ },
 ]
 
 function checkTool(checkCmd: string, versionRegex: RegExp): { installed: boolean; version?: string } {
