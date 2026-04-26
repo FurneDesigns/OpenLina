@@ -24,6 +24,9 @@ pnpm-debug.log*
 # typescript build cache
 *.tsbuildinfo
 
+# OpenLina runtime state (sqlite db, models cache, etc.)
+.openlina-data/
+
 # os-specific metadata
 .DS_Store
 Thumbs.db

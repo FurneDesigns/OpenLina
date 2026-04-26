@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 260" fill="none">
+  <rect width="400" height="260" fill="#f1f5f9"/>
+  <g transform="translate(140, 80)">
+    <rect x="0" y="45" width="120" height="55" rx="8" fill="#cbd5e1"/>
+    <path d="M15 45 L30 15 Q35 8 45 8 L75 8 Q85 8 90 15 L105 45 Z" fill="#cbd5e1"/>
+    <rect x="5" y="80" width="20" height="8" rx="4" fill="#94a3b8"/>
+    <rect x="95" y="80" width="20" height="8" rx="4" fill="#94a3b8"/>
+    <circle cx="22" cy="100" r="16" fill="#94a3b8"/>
+    <circle cx="22" cy="100" r="8" fill="#e2e8f0"/>
+    <circle cx="98" cy="100" r="16" fill="#94a3b8"/>
+    <circle cx="98" cy="100" r="8" fill="#e2e8f0"/>
+  </g>
+  <text x="200" y="210" text-anchor="middle" fill="#94a3b8" font-size="13" font-family="Arial, sans-serif">No image available</text>
+</svg>

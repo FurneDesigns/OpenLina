@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run lint
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Build
+        run: npm run build
+        env:
+          NODE_ENV: production
+          # Placeholder secrets — admin panel requires these at runtime, not build time.
+          # Real values live in .env.local on the server, never in CI.
+          ADMIN_PASSWORD: ci-placeholder
+          SESSION_SECRET: ci-placeholder-secret-32-chars-padded-here

@@ -1,0 +1,54 @@
+{
+  "name": "openlina",
+  "version": "0.1.0",
+  "description": "Local-first GUI to orchestrate AI agents that build webs/apps using your installed CLIs and APIs.",
+  "bin": {
+    "openlina": "./bin/openlina.js"
+  },
+  "scripts": {
+    "dev": "node --experimental-sqlite server.js",
+    "build": "next build",
+    "start": "NODE_ENV=production node --experimental-sqlite server.js",
+    "kill": "fuser -k 3747/tcp || true",
+    "clean": "rm -rf .next && rm -f tsconfig.tsbuildinfo",
+    "restart": "npm run kill && npm run clean && npm run dev"
+  },
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "files": [
+    "bin",
+    "server.js",
+    "next.config.mjs",
+    "tsconfig.json",
+    "tailwind.config.ts",
+    "postcss.config.js",
+    "src",
+    "public"
+  ],
+  "dependencies": {
+    "@xenova/transformers": "^2.17.2",
+    "next": "14.2.18",
+    "node-pty": "^1.0.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "socket.io": "^4.8.1",
+    "socket.io-client": "^4.8.1",
+    "lucide-react": "^0.460.0",
+    "zustand": "^5.0.1",
+    "xterm": "^5.3.0",
+    "xterm-addon-fit": "^0.8.0",
+    "clsx": "^2.1.1",
+    "tailwind-merge": "^2.5.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.15",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3"
+  }
+}
